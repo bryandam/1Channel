@@ -1408,6 +1408,9 @@ def add_subscription(url, title, year, img='', imdbnum=''):
         if utils.using_pl_subs():
             pw_scraper.add_to_playlist(utils.get_subs_pl_url(), url)
             db_connection.add_ext_sub(SUB_TYPES.PW_PL, url, imdbnum, days)
+        elif utils.using_towatch_subs():
+            pw_scraper.change_watched(url, "towatch", "add")
+            db_connection.add_ext_sub(SUB_TYPES.PW_TW, url, imdbnum, days)
         else:
             db_connection.add_subscription(url, title, img, year, imdbnum, days)
             
@@ -1424,6 +1427,9 @@ def cancel_subscription(url):
     if utils.using_pl_subs():
         pw_scraper.remove_from_playlist(utils.get_subs_pl_url(), url)
         db_connection.delete_ext_sub(SUB_TYPES.PW_PL, url)
+    elif utils.using_towatch_subs():
+        pw_scraper.change_watched(url, "towatch", "delete")
+        db_connection.delete_ext_sub(SUB_TYPES.PW_TW, url)
     else:
         db_connection.delete_subscription(url)
 
@@ -1672,6 +1678,8 @@ def edit_days(url, days=''):
             
         if utils.using_pl_subs():
             db_connection.edit_external_days(SUB_TYPES.PW_PL, url, new_days)
+        elif utils.using_towatch_subs():
+            db_connection.edit_external_days(SUB_TYPES.PW_TW, url, new_days)
         else:
             db_connection.edit_days(url, new_days)
         xbmc.executebuiltin('Container.Refresh')

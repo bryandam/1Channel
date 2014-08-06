@@ -38,7 +38,7 @@ MODES = enum(SAVE_FAV='SaveFav', DEL_FAV='DeleteFav', GET_SOURCES='GetSources', 
                    RM_FROM_PL='remove_from_playlist', ADD2PL='add_to_playlist', BROWSE_TW_WEB='browse_towatch_website', CH_TOWATCH_WEB='change_towatch_website',
                    CH_WATCH_WEB='change_watched_website', MAN_UPD_TOWATCH='man_update_towatch', RESET_DB='reset_db')
 
-SUB_TYPES  = enum(PW_PL=0)
+SUB_TYPES  = enum(PW_PL=0,PW_TW=1)
 
 hours_list={}
 hours_list[MODES.UPD_SUBS] = [2, 2] + range(2, 25) # avoid accidental runaway subscription updates
@@ -267,35 +267,47 @@ def using_pl_subs():
 
 def get_subs_pl_url():
     return '/playlists.php?id=%s' % (_1CH.get_setting('playlist-sub'))
+    
+def using_towatch_subs():
+    return (website_is_integrated() and _1CH.get_setting('towatch-sub') == 'true')
 
 def get_subscriptions(day=None, order_matters=False):
-    if using_pl_subs():
-        def_days=get_default_days()
-        items=pw_scraper.show_playlist(get_subs_pl_url(), False)
-        ext_subs = db_connection.get_external_subs(SUB_TYPES.PW_PL)
-        subs=[]
-        for item in items:
-            if item['video_type']=='tvshow':
-                for i, sub in enumerate(ext_subs):
-                    if item['url']==sub[1]:
-                        item['days']=sub[3]
-                        del ext_subs[i]
-                        break
-                else:
-                    # add the item to ext_subs with default days
-                    db_connection.add_ext_sub(SUB_TYPES.PW_PL, item['url'], '', def_days)
-                    item['days']=def_days
-
-                # only add this item to the list if we are pulling all days or a day that this item runs on
-                if day is None or str(day) in item['days']:
-                    subs.append((item['url'], item['title'], item['img'], item['year'], '', item['days']))
-                
-                if order_matters:
-                    subs.sort(cmp=days_cmp, key=lambda k:k[5].ljust(7)+k[1])
+    if using_pl_subs():    
+        items = pw_scraper.show_playlist(get_subs_pl_url(), False)
+        subs = get_filtered_subscriptions(items, SUB_TYPES.PW_PL, day, order_matters)
+    elif using_towatch_subs():
+        items = pw_scraper.get_towatch('tv')
+        subs=get_filtered_subscriptions(items, SUB_TYPES.PW_TW, day, order_matters)
     else:
         subs=db_connection.get_subscriptions(day, order_matters)
     return subs
+    
+def get_filtered_subscriptions(items, external_sub_type, day=None, order_matters=False):
+    subs=[]
+    if items is None: return subs
+    def_days=get_default_days()
+    ext_subs = db_connection.get_external_subs(external_sub_type)
 
+    for item in items:
+        if item['video_type']=='tvshow':
+            for i, sub in enumerate(ext_subs):
+                if item['url']==sub[1]:
+                    item['days']=sub[3]
+                    del ext_subs[i]
+                    break
+            else:
+                # add the item to ext_subs with default days
+                db_connection.add_ext_sub(external_sub_type, item['url'], '', def_days)
+                item['days']=def_days
+
+            # only add this item to the list if we are pulling all days or a day that this item runs on
+            if day is None or str(day) in item['days']:
+                subs.append((item['url'], item['title'], item['img'], item['year'], '', item['days']))
+            
+            if order_matters:
+                subs.sort(cmp=days_cmp, key=lambda k:k[5].ljust(7)+k[1])
+    return subs
+                
 # "all days" goes to the top, "no days" goes to the bottom, everything else is sorted lexicographically
 def days_cmp(x,y):
     xdays, xtitle=x[:7], x[7:]
