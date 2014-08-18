@@ -9,7 +9,8 @@
         <setting id="site_enabled" type="bool" label="Website Integration" default="False"/>
         <setting id="username" type="text" label="    Username" enable="eq(-1,true)" default=""/>
         <setting id="passwd" type="text" label="    Password" enable="eq(-2,true)" default="" option="hidden"/>
-		<setting id="playlist-sub" type="number" label="    Subscription Playlist ID" enable="eq(-3,true)" default=""/>
+		<setting id="playlist-sub" type="number" label=" Subscription Playlist ID" enable="eq(-3,true)+eq(1,false)" default=""/>
+		<setting id="towatch-sub" type="bool" label=" Subscribe to Watch List" enable="eq(-4,true)" default="False"/>
         <setting id="old_version" type="text" visible="False" default="0.0.0.0"/>
 	</category>
 
